@@ -96,7 +96,7 @@ jobs:
       # --------------------------------------------------
 
       - name: Package VSIX
-        run: npx @vscode/vsce package --no-dependencies
+        run: vsce package
         env:
           VSCE_PAT: dummy
 
