@@ -5,7 +5,7 @@ suite('Extension Integration', () => {
 
   test('extension activates successfully', async () => {
     const extension = vscode.extensions.getExtension(
-      'CptExorY.openwebui-commits'
+      'CptExorY.ai-handler-commit-messages'
     );
 
     assert.ok(extension, 'Extension not found');
@@ -16,13 +16,13 @@ suite('Extension Integration', () => {
   test('resetSystemPrompt command is registered', async () => {
     const commands = await vscode.commands.getCommands(true);
     assert.ok(
-      commands.includes('openwebui.resetSystemPrompt'),
+      commands.includes('aihandler.resetSystemPrompt'),
       'resetSystemPrompt command not registered'
     );
   });
 
   test('resetSystemPrompt resets config value', async () => {
-    const config = vscode.workspace.getConfiguration('openwebui');
+    const config = vscode.workspace.getConfiguration('aihandler');
 
     await config.update(
       'systemPrompt',
@@ -31,7 +31,7 @@ suite('Extension Integration', () => {
     );
 
     await vscode.commands.executeCommand(
-      'openwebui.resetSystemPrompt'
+      'aihandler.resetSystemPrompt'
     );
 
     const value = config.get<string>('systemPrompt');

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getGitDiff } from './git';
 import { generateCommitMessage } from './aihandler';
-import { OpenWebUIViewProvider } from './webviewProvider';
+import { AIHandlerViewProvider } from './webviewProvider';
 import { DEFAULT_SYSTEM_PROMPT } from './defaultSystemPrompt';
 
 let currentAbortController: AbortController | null = null;
@@ -29,10 +29,10 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   // Register the webview provider
-  const provider = new OpenWebUIViewProvider(context.extensionUri, context);
+  const provider = new AIHandlerViewProvider(context.extensionUri, context);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
-      OpenWebUIViewProvider.viewType,
+      AIHandlerViewProvider.viewType,
       provider
     )
   );

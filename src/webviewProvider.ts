@@ -4,7 +4,7 @@ interface ModelsResponse {
   data?: { id: string }[];
 }
 
-export class OpenWebUIViewProvider implements vscode.WebviewViewProvider {
+export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'aihandler.settingsView';
   private _view?: vscode.WebviewView;
 

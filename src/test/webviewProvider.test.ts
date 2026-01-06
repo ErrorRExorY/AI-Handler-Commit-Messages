@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { OpenWebUIViewProvider } from '../webviewProvider';
+import { AIHandlerViewProvider } from '../webviewProvider';
 
 suite('Webview Provider', () => {
 
@@ -13,7 +13,7 @@ suite('Webview Provider', () => {
       }
     } as unknown as vscode.ExtensionContext;
 
-    const provider = new OpenWebUIViewProvider(
+    const provider = new AIHandlerViewProvider(
       context.extensionUri,
       context
     );
@@ -35,11 +35,11 @@ suite('Webview Provider', () => {
     } as unknown as vscode.ExtensionContext;
 
     await context.globalState.update(
-      'openwebui.cachedModels',
+      'aihandler.cachedModels',
       ['llama3:8b']
     );
 
-    const cached = context.globalState.get('openwebui.cachedModels');
+    const cached = context.globalState.get('aihandler.cachedModels');
     assert.deepStrictEqual(cached, ['llama3:8b']);
   });
 });
