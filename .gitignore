@@ -7,3 +7,4 @@ out
 owuicommits-*.vsix
 .DS_Store
 openwebui-commits-*.vsix
+package-lock.json
