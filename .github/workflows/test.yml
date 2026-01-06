@@ -1,0 +1,40 @@
+name: Test VS Code Extension
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  test:
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile
+        run: npm run compile
+
+      # - name: Install xvfb
+      #   run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Run tests (headless, CI-safe)
+        env:
+            DISPLAY: ":99"
+            ELECTRON_DISABLE_GPU: "1"
+            ELECTRON_ENABLE_LOGGING: "1"
+            DBUS_SESSION_BUS_ADDRESS: "disabled:"
+            XDG_RUNTIME_DIR: "/tmp"
+            NO_AT_BRIDGE: "1"
+        run: |
+            xvfb-run -a \
+            --server-args="-screen 0 1024x768x24" \
+            npm test

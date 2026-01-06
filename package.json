@@ -1,0 +1,123 @@
+{
+  "name": "ai-handler-commit-messages",
+  "displayName": "AI Handler for Commits",
+  "description": "AI-powered commit messages using your local OpenWebUI instance",
+  "version": "1.0.0",
+  "repository": {
+    "url": "https://github.com/ErrorRExorY/OpenWebUI-Commit-Messages"
+  },
+  "engines": {
+    "vscode": "^1.107.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "icon": "icon.png",
+  "publisher": "CptExorY",
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aihandler-sidebar",
+          "title": "OpenWebUI",
+          "icon": "$(robot)"
+        }
+      ]
+    },
+    "views": {
+      "aihandler-sidebar": [
+        {
+          "type": "webview",
+          "id": "aihandler.settingsView",
+          "name": "Settings",
+          "icon": "$(settings-gear)"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AI Handler",
+      "properties": {
+        "aihandler.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "description": "The URL of your OpenWebUI instance"
+        },
+        "aihandler.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for authentication (optional)"
+        },
+        "aihandler.model": {
+          "type": "string",
+          "default": "",
+          "description": "Model to use for generating commit messages"
+        },
+        "aihandler.systemPrompt": {
+          "type": "string",
+          "default": "You are an AI that generates git commit messages from diffs.\n\nGenerate ONLY a git commit message following the Conventional Commits format.\n\nCRITICAL RULES:\n- Output ONLY the commit message, nothing else\n- NO explanatory text before or after\n- NO markdown code blocks or backticks\n- NO \"Here is...\" or similar preamble\n- First line: <type>: <summary> (max 72 chars)\n- Types: feat, fix, refactor, chore, docs, test, style, perf\n- Use imperative mood (\"add\" not \"added\")\n- If needed, add a blank line, then bullet points for the body\n- Only describe what actually changed in the code",
+          "description": "System prompt controlling how commit messages are generated"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "aihandler.generateCommitMessage",
+        "title": "Generate Commit Message",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "aihandler.stopGeneration",
+        "title": "Stop Generation",
+        "icon": "$(stop-circle)"
+      },
+      {
+        "command": "aihandler.resetSystemPrompt",
+        "title": "Reset Commit Prompt to Default",
+        "icon": "$(discard)"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "aihandler.generateCommitMessage",
+          "when": "scmProvider == git && !aihandler.isGenerating",
+          "group": "navigation"
+        },
+        {
+          "command": "aihandler.stopGeneration",
+          "when": "scmProvider == git && aihandler.isGenerating",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "package:vsce": "vsce package",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.107.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.27.1",
+    "eslint": "^9.39.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.1"
+  }
+}
