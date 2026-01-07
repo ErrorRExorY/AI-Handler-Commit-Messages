@@ -28,7 +28,6 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  // Register the webview provider
   const provider = new AIHandlerViewProvider(context.extensionUri, context);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -59,7 +58,15 @@ export function activate(context: vscode.ExtensionContext) {
           { location: vscode.ProgressLocation.SourceControl, title: 'Generating commit message...' },
           async () => {
             try {
-              const diff = await getGitDiff(repoPath);
+              const config = vscode.workspace.getConfiguration('aihandler');
+              const onlyStaged = config.get<boolean>('onlyStagedChanges', true);
+              const diff = await getGitDiff(repoPath, onlyStaged);
+              if (!diff.trim()) {
+                vscode.window.showWarningMessage(
+                  'No staged changes found. Stage files first or disable "only staged changes" in settings.'
+                );
+                return;
+              }
               const message = await generateCommitMessage(diff, currentAbortController!.signal);
               repo.inputBox.value = message;
             } catch (err: any) {

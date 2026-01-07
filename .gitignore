@@ -4,6 +4,6 @@
 dist
 node_modules
 out
-owuicommits-*.vsix
+
 .DS_Store
-openwebui-commits-*.vsix
+*.vsix

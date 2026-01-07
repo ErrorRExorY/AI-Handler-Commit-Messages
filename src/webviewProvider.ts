@@ -1,14 +1,16 @@
 import * as vscode from 'vscode';
-
-interface ModelsResponse {
-  data?: { id: string }[];
-}
+import { ProviderFactory } from './providerFactory';
+import { ProviderType } from './provider';
+import { testConnection, listModels } from './aihandler';
 
 export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'aihandler.settingsView';
   private _view?: vscode.WebviewView;
 
-  constructor(private readonly _extensionUri: vscode.Uri, private readonly _context: vscode.ExtensionContext) { }
+  constructor(
+    private readonly _extensionUri: vscode.Uri,
+    private readonly _context: vscode.ExtensionContext
+  ) {}
 
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -24,15 +26,14 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
-    // Handle messages from the webview
     webviewView.webview.onDidReceiveMessage(async (data) => {
       switch (data.type) {
         case 'getConfig':
-          this._sendConfig();
+          await this._sendConfig();
+          await this._sendProviderInfo();
           const cachedModels = this._context.globalState.get<string[]>(
             'aihandler.cachedModels'
           );
-
           if (cachedModels?.length) {
             webviewView.webview.postMessage({
               type: 'models',
@@ -40,28 +41,28 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
             });
           }
           break;
+
         case 'updateConfig':
           await this._updateConfig(data.key, data.value);
           break;
+
         case 'loadModels':
           await this._loadModels();
           break;
+
         case 'testConnection':
           await this._testConnection();
           break;
-        case 'resetSystemPrompt':
-          await vscode.commands.executeCommand(
-            'aihandler.resetSystemPrompt'
-          );
 
-          // danach Config erneut senden, damit UI aktualisiert wird
-          this._sendConfig();
+        case 'resetSystemPrompt':
+          await vscode.commands.executeCommand('aihandler.resetSystemPrompt');
+          await this._sendConfig();
           break;
       }
     });
 
-    // Send initial config
     this._sendConfig();
+    this._sendProviderInfo();
   }
 
   private async _sendConfig() {
@@ -73,11 +74,25 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
     this._view.webview.postMessage({
       type: 'config',
       data: {
+        provider: config.get<string>('provider', 'openwebui'),
         apiUrl: config.get<string>('apiUrl', ''),
         apiKey: config.get<string>('apiKey', ''),
         model: config.get<string>('model', ''),
-        systemPrompt: config.get<string>('systemPrompt', 'You analyze git diffs and write commit messages.')
+        systemPrompt: config.get<string>('systemPrompt', ''),
+        onlyStaged: config.get<boolean>('onlyStagedChanges', true)
       }
+    });
+  }
+
+  private async _sendProviderInfo() {
+    if (!this._view) {
+      return;
+    }
+
+    const providers = ProviderFactory.getProviderInfo();
+    this._view.webview.postMessage({
+      type: 'providers',
+      data: providers
     });
   }
 
@@ -85,11 +100,8 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
     const config = vscode.workspace.getConfiguration('aihandler');
     await config.update(key, value, vscode.ConfigurationTarget.Global);
 
-    if (key === 'apiUrl' || key === 'apiKey') {
-      await this._context.globalState.update(
-        'aihandler.cachedModels',
-        undefined
-      );
+    if (key === 'provider' || key === 'apiUrl' || key === 'apiKey') {
+      await this._context.globalState.update('aihandler.cachedModels', undefined);
     }
 
     vscode.window.showInformationMessage(`${key} updated successfully`);
@@ -101,76 +113,36 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
     }
 
     try {
-      const config = vscode.workspace.getConfiguration('aihandler');
-      const apiUrl = config.get<string>('apiUrl', '');
-      const apiKey = config.get<string>('apiKey', '');
+      const models = await listModels();
 
-      if (!apiUrl) {
-        throw new Error('API URL not configured');
-      }
-
-      const response = await fetch(`${apiUrl}/api/models`, {
-        headers: {
-          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to load models: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as ModelsResponse;
-      const models = data.data?.map(m => m.id) ?? [];
-
-      await this._context.globalState.update(
-        'aihandler.cachedModels',
-        models
-      );
+      await this._context.globalState.update('aihandler.cachedModels', models);
+      
       this._view.webview.postMessage({
         type: 'models',
         data: models
       });
+      
+      vscode.window.showInformationMessage(`Loaded ${models.length} models successfully`);
     } catch (error: any) {
       this._view.webview.postMessage({
         type: 'error',
         message: error.message
       });
+      vscode.window.showErrorMessage(`Failed to load models: ${error.message}`);
     }
   }
 
   private async _testConnection() {
-    if (!this._view) {
-      return;
-    }
-    
     try {
-      const config = vscode.workspace.getConfiguration('aihandler');
-      const apiUrl = config.get<string>('apiUrl', '');
-      const apiKey = config.get<string>('apiKey', '');
-
-      if (!apiUrl) {
-        throw new Error('API URL not configured');
+      const success = await testConnection();
+      
+      if (success) {
+        vscode.window.showInformationMessage('Connection successful!');
+      } else {
+        vscode.window.showErrorMessage('Connection failed');
       }
-
-      const response = await fetch(`${apiUrl}/api/models`, {
-        headers: {
-          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Connection failed: ${response.statusText}`);
-      }
-
-      this._view.webview.postMessage({
-        type: 'connectionSuccess',
-        message: 'Connection successful!'
-      });
     } catch (error: any) {
-      this._view.webview.postMessage({
-        type: 'error',
-        message: error.message
-      });
+      vscode.window.showErrorMessage(`Connection failed: ${error.message}`);
     }
   }
 
@@ -180,7 +152,7 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OpenWebUI Settings</title>
+  <title>AI Handler Settings</title>
   <style>
     body {
       padding: 10px;
@@ -229,40 +201,47 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
     button.secondary:hover {
       background: var(--vscode-button-secondaryHoverBackground);
     }
-    .message {
-      padding: 8px;
-      margin: 10px 0;
-      border-radius: 3px;
-    }
-    .success {
-      background: var(--vscode-inputValidation-infoBackground);
-      border: 1px solid var(--vscode-inputValidation-infoBorder);
-    }
-    .error {
-      background: var(--vscode-inputValidation-errorBackground);
-      border: 1px solid var(--vscode-inputValidation-errorBorder);
-    }
     .info {
       font-size: 0.9em;
       color: var(--vscode-descriptionForeground);
       margin-top: -5px;
       margin-bottom: 10px;
     }
+    .hidden {
+      display: none;
+    }
+    .provider-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      margin: 2px;
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      border-radius: 3px;
+      font-size: 0.85em;
+    }
   </style>
 </head>
 <body>
-  <h2>OpenWebUI Settings</h2>
+  <h2>AI Commit Handler</h2>
   
   <div class="section">
+    <label for="provider">AI Provider</label>
+    <select id="provider">
+      <option value="">Select provider...</option>
+    </select>
+    <div class="info" id="providerDescription"></div>
+  </div>
+
+  <div class="section" id="apiUrlSection">
     <label for="apiUrl">API URL</label>
     <input type="text" id="apiUrl" placeholder="http://localhost:8080">
-    <div class="info">The URL of your OpenWebUI instance</div>
+    <div class="info">The URL of your AI service</div>
   </div>
 
   <div class="section">
-    <label for="apiKey">API Key (optional)</label>
+    <label for="apiKey">API Key</label>
     <input type="password" id="apiKey" placeholder="Enter API key">
-    <div class="info">Leave empty if no authentication is required</div>
+    <div class="info">Required for cloud providers, optional for self-hosted</div>
   </div>
 
   <div class="section">
@@ -279,68 +258,132 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <div class="section">
+    <label>
+      <input type="checkbox" id="onlyStaged">
+      Generate commit message only from staged changes
+    </label>
+    <div class="info">
+      If enabled, only <code>git diff --cached</code> is used.
+    </div>
+  </div>
+
+
+  <div class="section">
     <label for="systemPrompt">System Prompt</label>
     <textarea id="systemPrompt" placeholder="Enter system prompt..."></textarea>
     <div class="info">Instructions for the AI when generating commit messages</div>
-    <button id="resetSystemPrompt" class="secondary">
-      Reset to Default
-    </button>
+    <button id="resetSystemPrompt" class="secondary">Reset to Default</button>
   </div>
 
   <div class="section">
     <button id="saveAll">Save All Settings</button>
   </div>
 
-  <div id="messageContainer"></div>
-
   <script>
     const vscode = acquireVsCodeApi();
     let currentConfig = {};
+    let providers = [];
 
-    // Request initial config
     vscode.postMessage({ type: 'getConfig' });
 
-    // Listen for messages from extension
     window.addEventListener('message', event => {
       const message = event.data;
       
       switch (message.type) {
         case 'config':
           currentConfig = message.data;
-          document.getElementById('apiUrl').value = message.data.apiUrl || '';
-          document.getElementById('apiKey').value = message.data.apiKey || '';
-          document.getElementById('model').value = message.data.model || '';
-          document.getElementById('systemPrompt').value = message.data.systemPrompt || '';
+          updateUI(message.data);
+          break;
+        
+        case 'providers':
+          providers = message.data;
+          populateProviders(message.data);
           break;
         
         case 'models':
-          const modelSelect = document.getElementById('model');
-          const savedModel = currentConfig.model;
-          modelSelect.innerHTML = '<option value="">Select a model...</option>';
-          message.data.forEach(model => {
-          const option = document.createElement('option');
-            option.value = model;
-            option.textContent = model;
-            modelSelect.appendChild(option);
-          });
-
-          if (savedModel && message.data.includes(savedModel)) {
-            modelSelect.value = savedModel;
-          }
-          showMessage('Models loaded successfully!', 'success');
-          break;
-        
-        case 'connectionSuccess':
-          showMessage(message.message, 'success');
+          populateModels(message.data);
           break;
         
         case 'error':
-          showMessage(message.message, 'error');
+          console.error(message.message);
           break;
       }
     });
 
-    // Save individual settings
+    function updateUI(config) {
+      document.getElementById('provider').value = config.provider || '';
+      document.getElementById('apiUrl').value = config.apiUrl || '';
+      document.getElementById('apiKey').value = config.apiKey || '';
+      document.getElementById('model').value = config.model || '';
+      document.getElementById('systemPrompt').value = config.systemPrompt || '';
+      document.getElementById('onlyStaged').checked = !!config.onlyStaged;
+
+      updateProviderUI(config.provider);
+    }
+
+    function populateProviders(providerList) {
+      const select = document.getElementById('provider');
+      select.innerHTML = '<option value="">Select provider...</option>';
+      
+      providerList.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = p.name;
+        select.appendChild(option);
+      });
+      
+      if (currentConfig.provider) {
+        select.value = currentConfig.provider;
+        updateProviderUI(currentConfig.provider);
+      }
+    }
+
+    function updateProviderUI(providerId) {
+      const provider = providers.find(p => p.id === providerId);
+      const apiUrlSection = document.getElementById('apiUrlSection');
+      const apiUrlInput = document.getElementById('apiUrl');
+      const descEl = document.getElementById('providerDescription');
+      
+      if (provider) {
+        descEl.textContent = provider.description;
+        
+        if (provider.requiresUrl) {
+          apiUrlSection.classList.remove('hidden');
+          if (provider.defaultUrl && !apiUrlInput.value) {
+            apiUrlInput.value = provider.defaultUrl;
+          }
+        } else {
+          apiUrlSection.classList.add('hidden');
+        }
+      } else {
+        descEl.textContent = '';
+        apiUrlSection.classList.add('hidden');
+      }
+    }
+
+    function populateModels(models) {
+      const select = document.getElementById('model');
+      const savedModel = currentConfig.model;
+      
+      select.innerHTML = '<option value="">Select a model...</option>';
+      models.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        select.appendChild(option);
+      });
+      
+      if (savedModel && models.includes(savedModel)) {
+        select.value = savedModel;
+      }
+    }
+
+    document.getElementById('provider').addEventListener('change', (e) => {
+      const value = e.target.value;
+      vscode.postMessage({ type: 'updateConfig', key: 'provider', value });
+      updateProviderUI(value);
+    });
+
     document.getElementById('apiUrl').addEventListener('change', (e) => {
       vscode.postMessage({ type: 'updateConfig', key: 'apiUrl', value: e.target.value });
     });
@@ -357,7 +400,6 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
       vscode.postMessage({ type: 'updateConfig', key: 'systemPrompt', value: e.target.value });
     });
 
-    // Button handlers
     document.getElementById('loadModels').addEventListener('click', () => {
       vscode.postMessage({ type: 'loadModels' });
     });
@@ -366,36 +408,31 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
       vscode.postMessage({ type: 'testConnection' });
     });
 
-    document.getElementById('saveAll').addEventListener('click', () => {
-      const apiUrl = document.getElementById('apiUrl').value;
-      const apiKey = document.getElementById('apiKey').value;
-      const model = document.getElementById('model').value;
-      const systemPrompt = document.getElementById('systemPrompt').value;
+    document.getElementById('onlyStaged').addEventListener('change', (e) => {
+      vscode.postMessage({
+        type: 'updateConfig',
+        key: 'onlyStagedChanges',
+        value: e.target.checked
+      });
+    });
 
-      vscode.postMessage({ type: 'updateConfig', key: 'apiUrl', value: apiUrl });
-      vscode.postMessage({ type: 'updateConfig', key: 'apiKey', value: apiKey });
-      vscode.postMessage({ type: 'updateConfig', key: 'model', value: model });
-      vscode.postMessage({ type: 'updateConfig', key: 'systemPrompt', value: systemPrompt });
-      
-      showMessage('All settings saved!', 'success');
+    document.getElementById('saveAll').addEventListener('click', () => {
+      const data = {
+        provider: document.getElementById('provider').value,
+        apiUrl: document.getElementById('apiUrl').value,
+        apiKey: document.getElementById('apiKey').value,
+        model: document.getElementById('model').value,
+        systemPrompt: document.getElementById('systemPrompt').value
+      };
+
+      Object.entries(data).forEach(([key, value]) => {
+        vscode.postMessage({ type: 'updateConfig', key, value });
+      });
     });
 
     document.getElementById('resetSystemPrompt').addEventListener('click', () => {
       vscode.postMessage({ type: 'resetSystemPrompt' });
     });
-    
-    function showMessage(text, type) {
-      const container = document.getElementById('messageContainer');
-      const div = document.createElement('div');
-      div.className = 'message ' + type;
-      div.textContent = text;
-      container.innerHTML = '';
-      container.appendChild(div);
-      
-      setTimeout(() => {
-        div.remove();
-      }, 5000);
-    }
   </script>
 </body>
 </html>`;

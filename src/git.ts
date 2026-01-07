@@ -1,10 +1,17 @@
 import { exec } from 'child_process';
 import * as vscode from 'vscode';
 
-export function getGitDiff(repoPath: string): Promise<string> {
+export function getGitDiff(
+  repoPath: string,
+  onlyStaged: boolean
+): Promise<string> {
+  const command = onlyStaged
+    ? 'git diff --cached'
+    : 'git diff --cached && git diff';
+
   return new Promise((resolve, reject) => {
     exec(
-      'git diff --cached && git diff',
+      command,
       { cwd: repoPath, maxBuffer: 10 * 1024 * 1024 },
       (err, stdout) => {
         if (err) {
@@ -16,6 +23,7 @@ export function getGitDiff(repoPath: string): Promise<string> {
     );
   });
 }
+
 
 export function getRepositoryPath(): string | null {
   const workspace = vscode.workspace.workspaceFolders;
