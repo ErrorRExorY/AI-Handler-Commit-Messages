@@ -1,10 +1,10 @@
 {
   "name": "ai-handler-commit-messages",
   "displayName": "AI Handler for Commits",
-  "description": "AI-powered commit messages using your local OpenWebUI instance",
-  "version": "1.0.0",
+  "description": "AI-powered commit messages supporting multiple AI providers",
+  "version": "1.1.0",
   "repository": {
-    "url": "https://github.com/ErrorRExorY/OpenWebUI-Commit-Messages"
+    "url": "https://github.com/ErrorRExorY/AI-Handler-Commit-Messages"
   },
   "engines": {
     "vscode": "^1.107.0"
@@ -21,7 +21,7 @@
       "activitybar": [
         {
           "id": "aihandler-sidebar",
-          "title": "OpenWebUI",
+          "title": "AI Commit Handler",
           "icon": "$(robot)"
         }
       ]
@@ -39,15 +39,34 @@
     "configuration": {
       "title": "AI Handler",
       "properties": {
+        "aihandler.provider": {
+          "type": "string",
+          "enum": [
+            "openwebui",
+            "openai",
+            "anthropic",
+            "google",
+            "ollama"
+          ],
+          "enumDescriptions": [
+            "Self-hosted OpenWebUI instance",
+            "OpenAI GPT models",
+            "Anthropic Claude models",
+            "Google Gemini models",
+            "Local Ollama instance"
+          ],
+          "default": "openwebui",
+          "description": "AI provider to use for generating commit messages"
+        },
         "aihandler.apiUrl": {
           "type": "string",
           "default": "http://localhost:8080",
-          "description": "The URL of your OpenWebUI instance"
+          "description": "API URL (required for OpenWebUI and Ollama)"
         },
         "aihandler.apiKey": {
           "type": "string",
           "default": "",
-          "description": "API key for authentication (optional)"
+          "description": "API key for authentication"
         },
         "aihandler.model": {
           "type": "string",
@@ -58,6 +77,11 @@
           "type": "string",
           "default": "You are an AI that generates git commit messages from diffs.\n\nGenerate ONLY a git commit message following the Conventional Commits format.\n\nCRITICAL RULES:\n- Output ONLY the commit message, nothing else\n- NO explanatory text before or after\n- NO markdown code blocks or backticks\n- NO \"Here is...\" or similar preamble\n- First line: <type>: <summary> (max 72 chars)\n- Types: feat, fix, refactor, chore, docs, test, style, perf\n- Use imperative mood (\"add\" not \"added\")\n- If needed, add a blank line, then bullet points for the body\n- Only describe what actually changed in the code",
           "description": "System prompt controlling how commit messages are generated"
+        },
+        "aihandler.onlyStagedChanges": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generate commit messages only from staged changes (git diff --cached)"
         }
       }
     },

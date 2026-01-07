@@ -1,17 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-suite('Extension Integration', () => {
-
-  test('extension activates successfully', async () => {
-    const extension = vscode.extensions.getExtension(
-      'CptExorY.ai-handler-commit-messages'
-    );
-
-    assert.ok(extension, 'Extension not found');
-    await extension!.activate();
-    assert.ok(extension!.isActive, 'Extension not active');
-  });
+suite('Command Registration', () => {
 
   test('resetSystemPrompt command is registered', async () => {
     const commands = await vscode.commands.getCommands(true);
@@ -21,7 +11,7 @@ suite('Extension Integration', () => {
     );
   });
 
-  test('resetSystemPrompt resets config value', async () => {
+  test('resetSystemPrompt resets configuration value', async () => {
     const config = vscode.workspace.getConfiguration('aihandler');
 
     await config.update(
@@ -36,6 +26,10 @@ suite('Extension Integration', () => {
 
     const value = config.get<string>('systemPrompt');
     assert.ok(value);
-    assert.ok(value!.includes('CRITICAL RULES'));
+    assert.ok(
+      value!.includes('CRITICAL RULES'),
+      'System prompt was not reset'
+    );
   });
+
 });

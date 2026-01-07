@@ -1,57 +1,81 @@
 import * as vscode from 'vscode';
-import { buildPrompt } from './prompt';
+import { ProviderFactory } from './providerFactory';
+import { ProviderType, ProviderConfig } from './provider';
 import { DEFAULT_SYSTEM_PROMPT } from './defaultSystemPrompt';
-
-interface OpenWebUIResponse {
-  choices: Array<{
-    message: {
-      content: string;
-    };
-  }>;
-}
 
 export async function generateCommitMessage(
   diff: string,
   signal: AbortSignal
 ): Promise<string> {
-  const config = vscode.workspace.getConfiguration('openwebui');
+  const config = vscode.workspace.getConfiguration('aihandler');
 
-  const apiUrl = config.get<string>('apiUrl')!;
-  const apiKey = config.get<string>('apiKey')!;
-  const model = config.get<string>('model')!;
+  const providerType = config.get<ProviderType>('provider') || ProviderType.OPENWEBUI;
+  const apiUrl = config.get<string>('apiUrl');
+  const apiKey = config.get<string>('apiKey') || '';
+  const model = config.get<string>('model') || '';
+  const systemPrompt = config.get<string>('systemPrompt')?.trim() || DEFAULT_SYSTEM_PROMPT;
 
-  const systemPrompt =
-    config.get<string>('systemPrompt')?.trim() ||
-    DEFAULT_SYSTEM_PROMPT;
-
-  const response = await fetch(`${apiUrl}/api/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: buildPrompt(diff) }
-      ],
-      temperature: 0.2
-    }),
-    signal
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenWebUI error: ${response.statusText}`);
+  if (!model) {
+    throw new Error('No model selected. Please configure a model in settings.');
   }
 
-  const json = await response.json() as OpenWebUIResponse;
-  let message = json.choices[0].message.content.trim();
+  const providerConfig: ProviderConfig = {
+    apiUrl,
+    apiKey,
+    model,
+    systemPrompt
+  };
+
+  const provider = ProviderFactory.createProvider(providerType, providerConfig);
   
-  message = message
-    .replace(/^```[\w]*\n?/gm, '')
-    .replace(/\n?```$/gm, '')
-    .replace(/^(Here (is|'s) (a|the|your)|This is a) .+?:\s*/i, '');
+  try {
+    return await provider.generateCommitMessage(diff, signal);
+  } catch (error: any) {
+    throw new Error(`${provider.name} error: ${error.message}`);
+  }
+}
+
+export async function testConnection(): Promise<boolean> {
+  const config = vscode.workspace.getConfiguration('aihandler');
+
+  const providerType = config.get<ProviderType>('provider') || ProviderType.OPENWEBUI;
+  const apiUrl = config.get<string>('apiUrl');
+  const apiKey = config.get<string>('apiKey') || '';
+  const model = config.get<string>('model') || '';
+  const systemPrompt = config.get<string>('systemPrompt')?.trim() || DEFAULT_SYSTEM_PROMPT;
+
+  const providerConfig: ProviderConfig = {
+    apiUrl,
+    apiKey,
+    model,
+    systemPrompt
+  };
+
+  const provider = ProviderFactory.createProvider(providerType, providerConfig);
+  return await provider.testConnection();
+}
+
+export async function listModels(): Promise<string[]> {
+  const config = vscode.workspace.getConfiguration('aihandler');
+
+  const providerType = config.get<ProviderType>('provider') || ProviderType.OPENWEBUI;
+  const apiUrl = config.get<string>('apiUrl');
+  const apiKey = config.get<string>('apiKey') || '';
+  const model = config.get<string>('model') || '';
+  const systemPrompt = config.get<string>('systemPrompt')?.trim() || DEFAULT_SYSTEM_PROMPT;
+
+  const providerConfig: ProviderConfig = {
+    apiUrl,
+    apiKey,
+    model,
+    systemPrompt
+  };
+
+  const provider = ProviderFactory.createProvider(providerType, providerConfig);
   
-  return message.trim();
+  if (provider.listModels) {
+    return await provider.listModels();
+  }
+  
+  return [];
 }
