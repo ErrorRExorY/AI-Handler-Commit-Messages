@@ -17,6 +17,7 @@ export interface ProviderConfig {
 
 export enum ProviderType {
   OPENWEBUI = 'openwebui',
+  PUBLIC = 'public',
   OPENAI = 'openai',
   ANTHROPIC = 'anthropic',
   GOOGLE = 'google',

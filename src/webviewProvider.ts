@@ -96,15 +96,17 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  private async _updateConfig(key: string, value: string) {
+  private async _updateConfig(key: string, value: any) {
     const config = vscode.workspace.getConfiguration('aihandler');
-    await config.update(key, value, vscode.ConfigurationTarget.Global);
 
-    if (key === 'provider' || key === 'apiUrl' || key === 'apiKey') {
-      await this._context.globalState.update('aihandler.cachedModels', undefined);
+    if (key === 'provider') {
+      if (!Object.values(ProviderType).includes(value)) {
+        vscode.window.showErrorMessage(`Invalid provider: ${value}`);
+        return;
+      }
     }
 
-    vscode.window.showInformationMessage(`${key} updated successfully`);
+    await config.update(key, value, vscode.ConfigurationTarget.Global);
   }
 
   private async _loadModels() {
@@ -238,7 +240,7 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
     <div class="info">The URL of your AI service</div>
   </div>
 
-  <div class="section">
+  <div class="section" id="apiKeySection">
     <label for="apiKey">API Key</label>
     <input type="password" id="apiKey" placeholder="Enter API key">
     <div class="info">Required for cloud providers, optional for self-hosted</div>
@@ -359,6 +361,11 @@ export class AIHandlerViewProvider implements vscode.WebviewViewProvider {
         descEl.textContent = '';
         apiUrlSection.classList.add('hidden');
       }
+    if (provider.requiresApiKey) {
+    apiKeySection.classList.remove('hidden');
+  } else {
+    apiKeySection.classList.add('hidden');
+  }
     }
 
     function populateModels(models) {

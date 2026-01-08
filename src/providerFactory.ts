@@ -4,6 +4,7 @@ import { OpenAIProvider } from './providers/openai';
 import { AnthropicProvider } from './providers/anthropic';
 import { GoogleProvider } from './providers/google';
 import { OllamaProvider } from './providers/ollama';
+import { OpenWebUIHostedProvider } from './providers/public';
 
 export class ProviderFactory {
   static createProvider(type: ProviderType, config: ProviderConfig): AIProvider {
@@ -22,7 +23,10 @@ export class ProviderFactory {
       
       case ProviderType.OLLAMA:
         return new OllamaProvider(config);
-      
+
+      case ProviderType.PUBLIC:
+        return new OpenWebUIHostedProvider(config);
+
       default:
         throw new Error(`Unsupported provider type: ${type}`);
     }
@@ -32,6 +36,7 @@ export class ProviderFactory {
     id: ProviderType;
     name: string;
     requiresUrl: boolean;
+    requiresApiKey: boolean;
     defaultUrl?: string;
     description: string;
   }> {
@@ -40,6 +45,7 @@ export class ProviderFactory {
         id: ProviderType.OPENWEBUI,
         name: 'OpenWebUI',
         requiresUrl: true,
+        requiresApiKey: true,
         defaultUrl: 'http://localhost:8080',
         description: 'Self-hosted OpenWebUI instance'
       },
@@ -47,26 +53,37 @@ export class ProviderFactory {
         id: ProviderType.OPENAI,
         name: 'OpenAI',
         requiresUrl: false,
+        requiresApiKey: true,
         description: 'OpenAI GPT models (GPT-4, GPT-3.5, etc.)'
       },
       {
         id: ProviderType.ANTHROPIC,
         name: 'Anthropic',
         requiresUrl: false,
+        requiresApiKey: true,
         description: 'Anthropic Claude models'
       },
       {
         id: ProviderType.GOOGLE,
         name: 'Google AI',
         requiresUrl: false,
+        requiresApiKey: true,
         description: 'Google Gemini models'
       },
       {
         id: ProviderType.OLLAMA,
         name: 'Ollama',
         requiresUrl: true,
+        requiresApiKey: true,
         defaultUrl: 'http://localhost:11434',
         description: 'Local Ollama instance'
+      },
+      {
+        id: ProviderType.PUBLIC,
+        name: 'Public',
+        requiresUrl: false,
+        requiresApiKey: false,
+        description: 'Free OpenWebUI instance. (slow but free)'
       }
     ];
   }

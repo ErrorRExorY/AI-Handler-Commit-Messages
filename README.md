@@ -1,92 +1,144 @@
-# OpenWebUI Commits
+# AI Handler – Commit Messages
 
-Generate intelligent Git commit messages using your own OpenWebUI instance - no expensive subscriptions required!
+AI Handler – Commit Messages is a Visual Studio Code extension that **automatically generates high-quality Git commit messages** using multiple AI providers — similar in spirit to GitHub Copilot, but **provider-agnostic**.
 
-## Features
+The extension analyzes the current Git changes and produces clear, consistent, and context-aware commit messages.
 
-- **AI-Powered Commit Messages**: Automatically generate meaningful commit messages based on your staged changes
-- **Self-Hosted**: Uses your own OpenWebUI instance, giving you full control over your data and costs
-- **Smart Integration**: Seamlessly integrates into VS Code's Source Control UI
-- **Customizable**: Configure API endpoint, model, and API key to match your setup
+---
 
-### Usage
+## ✨ Features
 
-1. Make changes to your code
-2. Stage your changes in the Source Control view
-3. Click the sparkle icon (✨) in the Source Control toolbar, or use the Command Palette (`Ctrl+Shift+P`) and search for "Generate Commit Message (OpenWebUI)"
-4. The AI-generated commit message will appear in the commit message box
-5. Review, edit if needed, and commit!
+- Automatic commit message generation based on `git diff`
+- Support for multiple AI providers
+- Unified prompt logic across all providers
+- Easily extensible provider architecture
+- Webview-based user interface
+- Comprehensive unit and integration test coverage
 
-## Requirements
+---
 
-- **OpenWebUI Instance**: You need a running OpenWebUI instance (local or remote)
-- **API Access**: Ensure your OpenWebUI instance has API access enabled
-- **Git Repository**: Must be working in a Git repository
+## 🤖 Supported AI Providers
 
-### Setting up OpenWebUI
+As of version **1.1.0**, the extension supports multiple providers:
 
-If you don't have OpenWebUI running yet:
+- **OpenWebUI**
+- **OpenAI**
+- **Anthropic**
+- **Google (Gemini)**
+- **Ollama** (local models)
+
+Providers are selected via a centralized factory (`providerFactory`), making it easy to add new providers in the future.
+
+---
+
+## 🧠 How It Works
+
+1. **Detecting Git Changes**  
+   The extension reads the current Git repository state and determines the diff that should be used as input:
+   - Either **only staged changes**
+   - Or **all working tree changes**  
+   
+   This behavior is configurable by the user and allows precise control over what content is used to generate the commit message.
+
+2. **System Prompt Handling**  
+   A system prompt is applied to guide the AI in generating high-quality commit messages.
+   - A **default system prompt** is set when the extension is first activated
+   - Users may **customize the system prompt** at any time
+   - It is **recommended to use the default prompt**, as it is optimized for commit message generation
+   - The system prompt can be **reset to the default at any time**
+
+3. **Prompt Construction**  
+   The selected Git diff (staged or full) is combined with the system prompt and transformed into a structured request payload.
+
+4. **Provider Execution**  
+   The request is sent to the **currently selected AI provider** via its API:
+   - OpenWebUI
+   - OpenAI
+   - Anthropic
+   - Google (Gemini)
+   - Ollama (local models)
+
+   All providers implement a unified interface, ensuring consistent behavior regardless of the backend.
+
+5. **Response Handling**  
+   The AI provider responds with a generated commit message, which is then returned to the extension and displayed to the user for review and acceptance.
+
+---
+
+## 🛠️ Project Structure (Excerpt)
+
+```text
+src/
+ ├─ extension.ts              # VS Code entry point
+ ├─ aihandler.ts               # Core orchestration logic
+ ├─ provider.ts                # Provider interface
+ ├─ providerFactory.ts         # Provider creation logic
+ ├─ providers/                 # AI provider implementations
+ │   ├─ openwebui.ts
+ │   ├─ openai.ts
+ │   ├─ anthropic.ts
+ │   ├─ google.ts
+ │   └─ ollama.ts
+ ├─ git.ts                     # Git integration
+ ├─ prompt.ts                  # Prompt construction
+ └─ defaultSystemPrompt.ts     # Default system prompt
+````
+
+---
+
+## 🧪 Testing
+
+The project includes extensive test coverage:
+
+* Provider-specific tests
+* Provider factory tests
+* Git integration tests
+* Prompt validation tests
+* Full extension integration tests
+
+Examples:
+
+```text
+src/test/providers/openai.test.ts
+src/test/providerFactory.test.ts
+src/test/extension.integration.test.ts
+```
+
+---
+
+## 📦 Installation
+
+### Install via VSIX (local)
 
 ```bash
-docker run -d -p 3000:8080 --name open-webui ghcr.io/open-webui/open-webui:main
+code --install-extension ai-handler-commit-messages-1.1.0.vsix
 ```
 
-Visit the [OpenWebUI documentation](https://docs.openwebui.com/) for more setup options.
+### Marketplace
 
-## Extension Settings
-
-Configure this extension through VS Code settings (`Ctrl+,`):
-
-* `openwebui.apiUrl`: Your OpenWebUI base URL (default: `http://localhost:3000`)
-* `openwebui.apiKey`: Your OpenWebUI API key (leave empty if not required)
-* `openwebui.model`: The model to use for generating commits (default: `gpt-4o-mini`)
-
-### Example Configuration
-
-```json
-{
-  "openwebui.apiUrl": "http://localhost:3000",
-  "openwebui.apiKey": "your-api-key-here",
-  "openwebui.model": "llama3.2"
-}
-```
-
-## Getting Your API Key
-
-1. Open your OpenWebUI instance in a browser
-2. Go to Settings → Account
-3. Find the API Keys section
-4. Create a new API key if needed
-5. Copy and paste it into the extension settings
-
-## Known Issues
-
-- Large diffs may take longer to process depending on your model
-- Ensure your OpenWebUI instance is accessible from VS Code (check firewalls/network settings)
-
-## Release Notes
-
-### 0.0.1
-
-Initial release of OpenWebUI Commits:
-- Generate commit messages from staged changes
-- Configurable API endpoint and model
-- Integration with VS Code Source Control UI
+*(Optional, if published)*
 
 ---
 
-## Why This Extension?
+## ⚙️ Requirements
 
-Tired of paying for expensive AI coding assistants just to generate commit messages? With OpenWebUI Commits, you can use your own self-hosted AI models to generate high-quality commit messages at no additional cost. Perfect for developers who value:
-
-- **Privacy**: Your code never leaves your infrastructure
-- **Cost Control**: Use any model you want without subscription fees
-- **Flexibility**: Switch between different AI models as needed
-
-## Support
-
-Found a bug or have a feature request? Please open an issue on the [GitHub repository](https://github.com/yourusername/owuicommits).
+* Visual Studio Code ≥ 1.80
+* Git installed and available in PATH
+* Configured API access for the selected provider
+* For Ollama: a locally running Ollama server
 
 ---
 
-**Enjoy your AI-powered commits without the subscription costs!** ✨
+## 📜 License
+
+This project is licensed under the MIT License.
+See [LICENSE](./LICENSE) for details.
+
+---
+
+## 🚀 Roadmap (Optional)
+
+* Provider-specific prompt customization
+* Conventional Commits support
+* Inline diff preview
+* Streaming responses

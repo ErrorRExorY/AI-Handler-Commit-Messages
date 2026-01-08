@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-suite('Command Registration', () => {
+suite('Command Registration (integration)', () => {
 
   test('resetSystemPrompt command is registered', async () => {
     const commands = await vscode.commands.getCommands(true);
