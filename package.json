@@ -2,7 +2,7 @@
   "name": "ai-handler-commit-messages",
   "displayName": "AI Handler for Commits",
   "description": "AI-powered commit messages supporting multiple AI providers",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "repository": {
     "url": "https://github.com/ErrorRExorY/AI-Handler-Commit-Messages"
   },
@@ -14,7 +14,9 @@
   ],
   "icon": "icon.png",
   "publisher": "CptExorY",
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -46,14 +48,16 @@
             "openai",
             "anthropic",
             "google",
-            "ollama"
+            "ollama",
+            "public"
           ],
           "enumDescriptions": [
             "Self-hosted OpenWebUI instance",
             "OpenAI GPT models",
             "Anthropic Claude models",
             "Google Gemini models",
-            "Local Ollama instance"
+            "Local Ollama instance",
+            "Public hosted OpenWebUI"
           ],
           "default": "openwebui",
           "description": "AI provider to use for generating commit messages"
@@ -100,6 +104,11 @@
         "command": "aihandler.resetSystemPrompt",
         "title": "Reset Commit Prompt to Default",
         "icon": "$(discard)"
+      },
+      {
+        "command": "aihandler.regeneratePublicApiKey",
+        "title": "AI Handler: Regenerate Public API Key (Debug)",
+        "icon": "$(key)"
       }
     ],
     "menus": {
