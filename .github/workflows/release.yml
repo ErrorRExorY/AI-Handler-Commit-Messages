@@ -86,10 +86,10 @@ jobs:
             exit 1
           fi
 
-      - name: Create git tag
-        run: |
-          git tag v${{ steps.version.outputs.version }}
-          git push origin v${{ steps.version.outputs.version }}
+      # - name: Create git tag
+      #   run: |
+      #     git tag v${{ steps.version.outputs.version }}
+      #     git push origin v${{ steps.version.outputs.version }}
 
       # --------------------------------------------------
       # PACKAGE VSIX
@@ -115,3 +115,4 @@ jobs:
           tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
           files: ${{ steps.vsix.outputs.file }}
+          generate_release_notes: true
