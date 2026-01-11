@@ -11,7 +11,7 @@ interface LiteLLMResponse {
 
 export class OpenWebUIHostedProvider implements AIProvider {
   name = 'LiteLLM (Public)';
-  private baseUrl = 'http://163.172.177.181:4000/v1';
+  private baseUrl = 'https://llm.shortn.cloud/v1';
 
   constructor(private config: ProviderConfig) {}
 
